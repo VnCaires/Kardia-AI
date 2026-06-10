@@ -67,7 +67,7 @@ export function AiCreatorView({ decks, onSaveGeneratedCards, onNavigate }: AiCre
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Não foi possível se conectar ao serviço Kardia AI. Verifique se a chave GEMINI_API_KEY está configurada.");
+      setError(err.message || "Não foi possível se conectar ao serviço Kardia AI. Verifique se a chave OPENAI_API_KEY está configurada.");
     } finally {
       setIsLoading(false);
     }

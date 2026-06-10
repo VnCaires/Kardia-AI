@@ -2,34 +2,84 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import OpenAI from "openai";
 
+dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.4-nano";
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS) || 45_000;
+const MAX_SOURCE_CHARS = 6000;
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-// Lazy-initialize Gemini SDK key securely on request, preventing boot crashes if key is omitted initially
-let aiClient: GoogleGenAI | null = null;
-function getGemini() {
+let aiClient: OpenAI | null = null;
+function getOpenAI() {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is missing. Please configure it in the Secrets panel.");
+      throw new Error("OPENAI_API_KEY environment variable is missing. Configure it in .env.local.");
     }
-    aiClient = new GoogleGenAI({
+    aiClient = new OpenAI({
       apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
+      timeout: OPENAI_TIMEOUT_MS,
+      maxRetries: 1,
     });
   }
   return aiClient;
 }
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(parsed)));
+}
+
+function compactText(value: string, maxChars = MAX_SOURCE_CHARS) {
+  return value.replace(/\s+/g, " ").trim().slice(0, maxChars);
+}
+
+function parseJsonOutput<T>(outputText: string | undefined, fallback: T): T {
+  if (!outputText) return fallback;
+  return JSON.parse(outputText.trim()) as T;
+}
+
+function getAiErrorMessage(error: any) {
+  const isTimeout =
+    error?.name === "APIConnectionTimeoutError" ||
+    error?.constructor?.name === "APIConnectionTimeoutError";
+
+  if (isTimeout) {
+    return {
+      status: 504,
+      message:
+        "A OpenAI demorou para responder. Tente novamente em alguns segundos ou use um modelo mais rapido em OPENAI_MODEL.",
+    };
+  }
+
+  return {
+    status: 500,
+    message: error?.message || "Erro desconhecido ao chamar a IA.",
+  };
+}
+
+const cardSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    front: { type: "string" },
+    back: { type: "string" },
+    type: { type: "string", enum: ["qa", "mcq", "tf"] },
+    options: { type: "array", items: { type: "string" } },
+    tag: { type: "string" },
+    difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+  },
+  required: ["front", "back", "type", "options", "tag", "difficulty"],
+} as const;
 
 // 1. API: Smart Flashcard Generation
 app.post("/api/generate-cards", async (req, res) => {
@@ -37,73 +87,58 @@ app.post("/api/generate-cards", async (req, res) => {
     const { prompt, quantity = 5, level = "medium", format = "mixed" } = req.body;
 
     if (!prompt || typeof prompt !== "string") {
-      return res.status(400).json({ error: "O campo 'prompt' é obrigatório e deve ser uma string." });
+      return res.status(400).json({ error: "O campo 'prompt' e obrigatorio e deve ser uma string." });
     }
 
-    const ai = getGemini();
+    const ai = getOpenAI();
+    const cardCount = clampNumber(quantity, 1, 20, 5);
+    const difficulty = ["easy", "medium", "hard"].includes(level) ? level : "medium";
+    const cardFormat = ["mixed", "qa", "mcq", "tf"].includes(format) ? format : "mixed";
+    const source = compactText(prompt);
 
-    const systemInstruction = 
-      "Você é uma inteligência de elite especializada em educação e metodologia científica de repetição espaçada. " +
-      "Seu objetivo é extrair conceitos-chave de livros, anotações ou textos inseridos e transformá-los em flashcards acadêmicos de altíssimo valor " +
-      "pedagógico, claros, concisos e fáceis de memorizar. Cada cartão deve conter termos desafiadores mas explicados de maneira direta. " +
-      "Responda no mesmo idioma do prompt do usuário (geralmente português ou inglês).";
-
-    const difficultyPrompt = `A dificuldade recomendada para os cards é: ${level}. `;
-    const formatPrompt = 
-      format === "mixed"
-        ? "Gere uma mistura saudável de perguntas e respostas diretas ('qa'), múltiplas escolhas ('mcq') e verdadeiro ou falso ('tf')."
-        : format === "mcq"
-        ? "Todos os flashcards devem ser de múltipla escolha ('mcq') com 4 alternativas plausíveis, sinalizando a resposta correta de forma clara no verso."
-        : format === "tf"
-        ? "Todos devem ser do estilo Verdadeiro ou Falso ('tf'), onde a frente propõe uma afirmação e o verso diz se é Verdadeiro ou Falso junto de uma breve retificação."
-        : "Todos os flashcards devem ser do tipo pergunta e resposta direta ('qa').";
-
-    const promptText = 
-      `Gere exatamente ${quantity} flashcards úteis baseados no material ou tópico abaixo:\n\n` +
-      `TÓPICO/MATERIAL: "${prompt}"\n\n` +
-      `REQUISITOS:\n` +
-      `- ${difficultyPrompt}\n` +
-      `- ${formatPrompt}\n` +
-      `- Siga restritamente o formato JSON de resposta requerido. `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: promptText,
-      config: {
-        systemInstruction,
-        temperature: 0.8,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          description: "Lista de flashcards pedagógicos gerados.",
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              front: { type: Type.STRING, description: "Frente do flashcard (pergunta ou afirmação instigante)." },
-              back: { type: Type.STRING, description: "Verso do flashcard (resposta correta, justificativa ou explicação sintética)." },
-              type: { type: Type.STRING, description: "Tipo de card: 'qa', 'mcq' ou 'tf'." },
-              options: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "Se o tipo for 'mcq', envie de 3 a 4 alternativas para o usuário escolher. Para qa ou tf, envie vazio ou omita."
+    const response = await ai.responses.create(
+      {
+        model: OPENAI_MODEL,
+        instructions:
+          "Crie flashcards de estudo. Seja fiel ao material, direto e sem floreios. Responda no idioma do usuario.",
+        input:
+          `Gere ${cardCount} cards. dificuldade=${difficulty}; formato=${cardFormat}. ` +
+          "qa: pergunta curta e resposta objetiva. mcq: 4 opcoes em options e resposta correta no back. tf: afirmacao e correcao breve. " +
+          `Material: ${source}`,
+        max_output_tokens: Math.min(2600, 260 + cardCount * 130),
+        text: {
+          format: {
+            type: "json_schema",
+            name: "flashcard_batch",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                cards: {
+                  type: "array",
+                  items: cardSchema,
+                },
               },
-              tag: { type: Type.STRING, description: "Uma única tag curta (ex: 'Citologia', 'Gramática', 'Trigonometria') relacionada ao assunto específico." },
-              difficulty: { type: Type.STRING, description: "Dificuldade do card: 'easy', 'medium' ou 'hard'." }
+              required: ["cards"],
             },
-            required: ["front", "back", "type", "tag", "difficulty"]
-          }
-        }
+          },
+        },
+      },
+      {
+        timeout: Math.max(OPENAI_TIMEOUT_MS, 60_000),
+        maxRetries: 1,
       }
-    });
+    );
 
-    const outputText = response.text || "[]";
-    const cards = JSON.parse(outputText.trim());
+    const { cards } = parseJsonOutput<{ cards: unknown[] }>(response.output_text, { cards: [] });
     return res.json({ success: true, cards });
   } catch (error: any) {
-    console.error("Erro na rota de geração:", error);
-    return res.status(500).json({ 
-      error: error.message || "Erro desconhecido ao gerar flashcards.", 
-      details: error.stack 
+    console.error("Erro na rota de geracao:", error);
+    const apiError = getAiErrorMessage(error);
+    return res.status(apiError.status).json({
+      error: apiError.message,
+      details: error.stack,
     });
   }
 });
@@ -114,74 +149,89 @@ app.post("/api/assistant", async (req, res) => {
     const { action, front = "", back = "", type = "qa", options = [] } = req.body;
 
     if (!action) {
-      return res.status(400).json({ error: "O campo 'action' é obrigatório." });
+      return res.status(400).json({ error: "O campo 'action' e obrigatorio." });
     }
 
-    const ai = getGemini();
+    const ai = getOpenAI();
 
-    let assistantPrompt = "";
+    let task = "";
     if (action === "improve-question") {
-      assistantPrompt = 
-        `Melhore esta pergunta/afirmação para torná-la mais propícia para repetição espaçada (explicitação de termos, contexto cognitivo mais detalhado e instigante, mantendo a resposta aproximada).\n` +
-        `Frente Atual: "${front}"\n` +
-        `Verso Atual: "${back}"`;
+      task = "Melhore apenas a frente: mais clara, testavel e especifica. Preserve o sentido.";
     } else if (action === "simplify-answer") {
-      assistantPrompt = 
-        `Deixe a resposta no verso muito mais sintetizada, fatiada em bullets claros e rápidos de ler durante uma revisão sob pressão temporal.\n` +
-        `Verso Atual: "${back}"`;
+      task = "Simplifique apenas o verso em 2-4 bullets curtos. Preserve fatos.";
     } else if (action === "create-mcq") {
-      assistantPrompt = 
-        `Transforme esta questão em múltipla escolha ('mcq'). Sugira 4 alternativas e coloque no verso a correta acompanhada de uma explicação simples.\n` +
-        `Frente: "${front}"\n` +
-        `Verso: "${back}"`;
+      task = "Converta para mcq com 4 alternativas plausiveis. Coloque a correta e justificativa curta no verso.";
     } else {
-      return res.status(400).json({ error: "Ação de assistente desconhecida." });
+      return res.status(400).json({ error: "Acao de assistente desconhecida." });
     }
 
-    const systemInstruction = 
-      "Você é um copiloto de edição do Kardia AI. Modifique os campos do flashcard de acordo com a solicitação " +
-      "e retorne sempre a estrutura refinada correspondente nas chaves fornecidas de resposta.";
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: assistantPrompt,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            front: { type: Type.STRING, description: "Novo valor para a frente do cartão." },
-            back: { type: Type.STRING, description: "Novo valor para o verso do cartão." },
-            type: { type: Type.STRING, description: "Tipo do cartão: 'qa', 'mcq' ou 'tf'." },
-            options: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING }, 
-              description: "Vetor de alternativas caso o tipo seja 'mcq'. Caso contrário, retorne vazio." 
-            }
+    const response = await ai.responses.create(
+      {
+        model: OPENAI_MODEL,
+        instructions: "Edite um flashcard. Seja economico, mantenha idioma e retorne somente campos finais.",
+        input: JSON.stringify({
+          task,
+          card: {
+            front: compactText(String(front), 700),
+            back: compactText(String(back), 700),
+            type,
+            options: Array.isArray(options) ? options.slice(0, 4) : [],
           },
-          required: ["front", "back", "type"]
-        }
+        }),
+        max_output_tokens: 360,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "flashcard_edit",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                front: { type: "string" },
+                back: { type: "string" },
+                type: { type: "string", enum: ["qa", "mcq", "tf"] },
+                options: { type: "array", items: { type: "string" } },
+              },
+              required: ["front", "back", "type", "options"],
+            },
+          },
+        },
+      },
+      {
+        timeout: Math.min(OPENAI_TIMEOUT_MS, 30_000),
+        maxRetries: 1,
       }
-    });
+    );
 
-    const outputText = response.text || "{}";
-    const result = JSON.parse(outputText.trim());
+    const result = parseJsonOutput(response.output_text, {
+      front,
+      back,
+      type,
+      options,
+    });
     return res.json({ success: true, card: result });
   } catch (error: any) {
     console.error("Erro no assistente de IA:", error);
-    return res.status(500).json({ 
-      error: error.message || "Erro no copiloto de IA.",
-      details: error.stack
+    const apiError = getAiErrorMessage(error);
+    return res.status(apiError.status).json({
+      error: apiError.message,
+      details: error.stack,
     });
   }
 });
 
-// Serve Frontend using Vite or Static files depending on NODE_ENV
+// Serve Frontend using Vite or static files depending on NODE_ENV.
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
+      configFile: false,
+      plugins: [react(), tailwindcss()],
+      resolve: {
+        alias: {
+          "@": path.resolve(process.cwd(), "."),
+        },
+      },
       server: { middlewareMode: true },
       appType: "spa",
     });
@@ -189,7 +239,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

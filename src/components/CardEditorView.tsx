@@ -103,7 +103,7 @@ export function CardEditorView({ deck, onClose, onUpdateDeckCards }: CardEditorV
       setCardsList(copied);
     } catch (err: any) {
       console.error(err);
-      setAiError(err.message || "Não foi possível contactar o assistente de IA. Certifique-se de configurar a API key do Gemini.");
+      setAiError(err.message || "Não foi possível contactar o assistente de IA. Certifique-se de configurar a API key da OpenAI.");
     } finally {
       setIsAiLoading(false);
     }
@@ -320,7 +320,7 @@ export function CardEditorView({ deck, onClose, onUpdateDeckCards }: CardEditorV
           <div className="text-center space-y-1.5 pb-2 border-b border-slate-200">
             <Sparkles className="w-6 h-6 text-indigo-600 mx-auto fill-indigo-200" />
             <h3 className="font-bold text-slate-900 text-sm">Copiloto de IA Kardia</h3>
-            <p className="text-[10px] text-slate-400">Refine e mude formatos dinamicamente usando a inteligência do Gemini.</p>
+            <p className="text-[10px] text-slate-400">Refine e mude formatos dinamicamente usando a inteligência da OpenAI.</p>
           </div>
 
           {!activeCard ? (
