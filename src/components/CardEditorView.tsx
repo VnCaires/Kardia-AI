@@ -1,17 +1,32 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Deck, Card, CardType, DifficultyLevel } from "../types";
 import { Sparkles, ArrowLeft, ArrowRight, Save, Trash, Plus, Command, Eye, Cpu, BookOpen, AlertCircle, Loader2, Wand2 } from "lucide-react";
 
 interface CardEditorViewProps {
   deck: Deck;
   onClose: () => void;
-  onUpdateDeckCards: (deckId: string, cards: Card[]) => void;
+  onUpdateDeckCards: (
+    deckId: string,
+    cards: Card[],
+    metadata?: Partial<Pick<Deck, "name" | "description" | "category">>
+  ) => void;
 }
 
 export function CardEditorView({ deck, onClose, onUpdateDeckCards }: CardEditorViewProps) {
   const [cardsList, setCardsList] = useState<Card[]>([...deck.cards]);
+  const [deckName, setDeckName] = useState(deck.name);
+  const [deckDescription, setDeckDescription] = useState(deck.description);
+  const [deckCategory, setDeckCategory] = useState(deck.category);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   
+  useEffect(() => {
+    setCardsList([...deck.cards]);
+    setDeckName(deck.name);
+    setDeckDescription(deck.description);
+    setDeckCategory(deck.category);
+    setSelectedIndex(0);
+  }, [deck]);
+
   // Active editing card references
   const activeCard = cardsList[selectedIndex] || null;
 
@@ -61,7 +76,11 @@ export function CardEditorView({ deck, onClose, onUpdateDeckCards }: CardEditorV
   };
 
   const handleSaveDeck = () => {
-    onUpdateDeckCards(deck.id, cardsList);
+    onUpdateDeckCards(deck.id, cardsList, {
+      name: deckName.trim(),
+      description: deckDescription,
+      category: deckCategory,
+    });
     onClose();
   };
 
@@ -142,6 +161,55 @@ export function CardEditorView({ deck, onClose, onUpdateDeckCards }: CardEditorV
             <Save className="w-3.5 h-3.5" />
             Salvar Baralho
           </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Informações do baralho</h3>
+            <p className="text-xs text-slate-500">Atualize nome, descrição e categoria junto com os cartões.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 block">Nome do baralho</label>
+            <input
+              type="text"
+              value={deckName}
+              onChange={(e) => setDeckName(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 block">Categoria</label>
+            <select
+              value={deckCategory}
+              onChange={(e) => setDeckCategory(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-hidden focus:border-indigo-500 bg-white"
+            >
+              <option value="Medicina">Medicina</option>
+              <option value="Ciências Biológicas">Ciências Biológicas</option>
+              <option value="Ciências Jurídicas">Ciências Jurídicas</option>
+              <option value="Idiomas">Idiomas</option>
+              <option value="Administração">Administração</option>
+              <option value="Engenharia e Exatas">Engenharia e Exatas</option>
+              <option value="Geral">Geral</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 block">Descrição</label>
+          <textarea
+            rows={3}
+            value={deckDescription}
+            onChange={(e) => setDeckDescription(e.target.value)}
+            placeholder="Descreva o foco do baralho e o que ele cobre"
+            className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-hidden focus:border-indigo-500"
+          />
         </div>
       </div>
 
