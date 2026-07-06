@@ -7,3 +7,8 @@ coverage/
 *.err
 .env*
 !.env.example
+__pycache__/
+*.py[cod]
+*.sqlite
+*.db
+.venv/

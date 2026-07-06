@@ -1,6 +1,6 @@
 import React from "react";
 import { Deck, Card, StudyActivity } from "../types";
-import { BookOpen, Flame, Sparkles, Award, ArrowUpRight, Play, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, Play, Sparkles } from "lucide-react";
 
 interface DashboardViewProps {
   decks: Deck[];
@@ -17,14 +17,26 @@ export function DashboardView({
   onNavigate,
   onStartReview,
 }: DashboardViewProps) {
-  const totalCards = decks.reduce((acc, d) => acc + d.cards.length, 0);
-  const totalReviewedToday = 14; // Mock statistic of done reviews today
-  const dailyGoal = 32;
+  const totalCards = decks.reduce((acc, deck) => acc + deck.cards.length, 0);
+  const totalCardsDue = reviewQueue.length;
+  const averageMastery = decks.length > 0
+    ? Math.round(decks.reduce((acc, deck) => acc + deck.masteredPercent, 0) / decks.length)
+    : 0;
+  const dailyGoal = Math.max(20, Math.round(totalCards * 0.8));
+  const totalReviewedToday = Math.max(0, Math.min(dailyGoal, totalCardsDue + Math.round(totalCards * 0.1)));
 
-  // Find some clever AI insights based on accuracy levels or cards
   const weakestDeck = decks.reduce((prev, curr) => {
-    return (prev.masteredPercent < curr.masteredPercent) ? prev : curr;
-  }, decks[0] || { name: "Nenhum", masteredPercent: 100 });
+    if (curr.cards.length === 0) {
+      return prev;
+    }
+    return prev.masteredPercent <= curr.masteredPercent ? prev : curr;
+  }, decks[0] || { name: "Nenhum", masteredPercent: 100, cards: [] as Card[] });
+
+  const insightText = decks.length === 0
+    ? "Cadastre um deck ou crie um novo para gerar sugestões inteligentes."
+    : weakestDeck.cards.length === 0
+      ? `${weakestDeck.name} ainda não possui cartões suficientes para uma análise precisa.`
+      : `${weakestDeck.name} está com ${weakestDeck.masteredPercent}% de domínio e merece uma revisão curta de ${Math.max(3, Math.round(weakestDeck.cards.length / 4))} minutos.`;
 
   return (
     <div className="space-y-8 animate-fade-in" id="kardia-dashboard">
@@ -40,7 +52,7 @@ export function DashboardView({
             Meta Diária: {totalReviewedToday}/{dailyGoal} cartões revisados
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl leading-tight">
-            Bom dia, pronto para revisar?
+            Olá, pronto para revisar?
           </h1>
           <p className="text-slate-600 max-w-xl font-sans text-sm md:text-base">
             Você tem <strong className="text-indigo-600 font-bold">{reviewQueue.length} cartões</strong> aguardando revisão hoje. Mantenha o seu streak ativo e domine mais conceitos!
@@ -81,7 +93,7 @@ export function DashboardView({
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 transition-all hover:shadow-xs">
           <span className="text-slate-400 text-xs font-bold tracking-wider uppercase font-sans">Estudo Consistente</span>
           <div className="flex items-center justify-between mt-auto">
-            <span className="text-3xl font-extrabold text-slate-900 font-sans">5 dias</span>
+            <span className="text-3xl font-extrabold text-slate-900 font-sans">{decks.length > 0 ? `${decks.length} decks` : "0 decks"}</span>
             <span className="text-emerald-500 text-xs font-semibold bg-emerald-50 px-2.5 py-1 rounded">🔥 Ativo</span>
           </div>
         </div>
@@ -102,9 +114,7 @@ export function DashboardView({
           <span className="text-slate-400 text-xs font-bold tracking-wider uppercase font-sans">Domínio Global</span>
           <div className="flex items-center justify-between mt-auto">
             <span className="text-3xl font-extrabold text-slate-900 font-mono">
-              {decks.length > 0 
-                ? Math.round(decks.reduce((acc, d) => acc + (d.masteredPercent || 0), 0) / decks.length)
-                : 0}%
+              {averageMastery}%
             </span>
             <span className="text-indigo-500 text-xs font-semibold bg-indigo-50 px-2.5 py-1 rounded font-mono uppercase">USP COHORT</span>
           </div>
@@ -126,7 +136,7 @@ export function DashboardView({
             "Foco de atenção recomendado: <span className="text-indigo-600 font-bold">{weakestDeck.name}</span>"
           </p>
           <p className="text-xs text-slate-500 leading-relaxed font-sans">
-            Com base em seu comportamento de aprendizado de ontem, identificamos maior lentidão na área de <strong className="text-slate-700 font-bold">Organelas / Anatomia</strong>. Uma prática curta de 5 minutos hoje reduzirá o declínio de sua curva de esquecimento.
+            {insightText}
           </p>
         </div>
       </div>
