@@ -48,7 +48,7 @@ npm run dev
 ### 6. Login
 Define admin credentials in your shell before starting the backend:
 ```bash
-set KARDIA_ADMIN_EMAIL=admin@kardia.local
+set KARDIA_ADMIN_EMAIL=admin@admin.com
 set KARDIA_ADMIN_PASSWORD=change-me-now
 ```
 

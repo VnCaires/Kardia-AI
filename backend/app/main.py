@@ -64,7 +64,7 @@ class LoginResponse(BaseModel):
 
 
 TOKEN_SECRET = os.getenv("KARDIA_TOKEN_SECRET", "kardia-dev-secret-change-me")
-ADMIN_EMAIL = os.getenv("KARDIA_ADMIN_EMAIL", "admin@kardia.local")
+ADMIN_EMAIL = os.getenv("KARDIA_ADMIN_EMAIL", "admin@admin.com")
 ADMIN_PASSWORD = os.getenv("KARDIA_ADMIN_PASSWORD", "change-me-now")
 ADMIN_NAME = os.getenv("KARDIA_ADMIN_NAME", "Administrador")
 
