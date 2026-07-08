@@ -69,6 +69,250 @@ ADMIN_PASSWORD = os.getenv("KARDIA_ADMIN_PASSWORD", "change-me-now")
 ADMIN_NAME = os.getenv("KARDIA_ADMIN_NAME", "Administrador")
 
 
+def _iso_now(offset_days: int = 0) -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=offset_days)).isoformat()
+
+
+def _build_sample_decks() -> List[dict]:
+    today = _iso_now()
+    tomorrow = _iso_now(1)
+    yesterday = _iso_now(-1)
+    return [
+        {
+            "id": "biologia-celular",
+            "name": "Biologia Celular",
+            "description": "Estudo detalhado das organelas, membrana celular, divisao celular e metabolismo citoplasmatico.",
+            "category": "Ciencias Biologicas",
+            "cardsCount": 6,
+            "masteredPercent": 74,
+            "author": "Kardia Community",
+            "cards": [
+                {
+                    "id": "bc-1",
+                    "deckId": "biologia-celular",
+                    "front": "Qual e a principal funcao dos ribossomos na celula humana?",
+                    "back": "A sintese de proteinas, traduzindo o RNA mensageiro em cadeias de aminoacidos.",
+                    "type": "qa",
+                    "tag": "Organelas",
+                    "difficulty": "easy",
+                    "interval": 3,
+                    "repetition": 2,
+                    "easeFactor": 2.6,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "bc-2",
+                    "deckId": "biologia-celular",
+                    "front": "Onde ocorre a maior parte da producao de ATP na respiracao celular aerobica?",
+                    "back": "Principalmente nas mitocondrias, durante o ciclo de Krebs e a cadeia transportadora de eletrons.",
+                    "type": "qa",
+                    "tag": "Metabolismo",
+                    "difficulty": "medium",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.4,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "bc-3",
+                    "deckId": "biologia-celular",
+                    "front": "Durante qual fase da mitose os cromossomos se alinham na placa metafasica?",
+                    "back": "Metafase. E quando os fusos mitoticos se conectam aos centromeros dos cromossomos duplicados.",
+                    "type": "mcq",
+                    "options": ["Profase", "Metafase", "Anafase", "Telofase"],
+                    "tag": "Fases da Mitose",
+                    "difficulty": "medium",
+                    "interval": 10,
+                    "repetition": 4,
+                    "easeFactor": 2.5,
+                    "nextReviewDate": tomorrow,
+                },
+                {
+                    "id": "bc-4",
+                    "deckId": "biologia-celular",
+                    "front": "A difusao facilitada consome ATP para atravessar ions pela membrana.",
+                    "back": "Falso. A difusao facilitada e transporte passivo e nao consome ATP.",
+                    "type": "tf",
+                    "tag": "Transporte Celular",
+                    "difficulty": "easy",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.5,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "bc-5",
+                    "deckId": "biologia-celular",
+                    "front": "Quais organelas digerem particulas e organelas velhas por meio de enzimas hidroliticas?",
+                    "back": "Lisossomos. Eles atuam em pH acido e participam da digestao intracelular.",
+                    "type": "qa",
+                    "tag": "Fagocitose",
+                    "difficulty": "medium",
+                    "interval": 2,
+                    "repetition": 1,
+                    "easeFactor": 2.3,
+                    "nextReviewDate": yesterday,
+                },
+                {
+                    "id": "bc-6",
+                    "deckId": "biologia-celular",
+                    "front": "A carioteca desaparece completamente na anafase do ciclo mitotico.",
+                    "back": "Falso. O envelope nuclear se desintegra na prometafase e se reorganiza na telofase.",
+                    "type": "tf",
+                    "tag": "Ciclo Celular",
+                    "difficulty": "hard",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.1,
+                    "nextReviewDate": today,
+                },
+            ],
+        },
+        {
+            "id": "direito-civil",
+            "name": "Direito Civil",
+            "description": "Teoria geral dos negocios juridicos, contratos bilaterais, vicios do consentimento e direitos reais patrimoniais.",
+            "category": "Ciencias Juridicas",
+            "cardsCount": 4,
+            "masteredPercent": 42,
+            "author": "Prof. Alberto Santos",
+            "cards": [
+                {
+                    "id": "dc-1",
+                    "deckId": "direito-civil",
+                    "front": "Qual e o prazo geral de prescricao previsto no Codigo Civil quando a lei nao fixa prazo menor?",
+                    "back": "10 anos, conforme o artigo 205 do Codigo Civil.",
+                    "type": "qa",
+                    "tag": "Prazos Prescricionais",
+                    "difficulty": "medium",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.5,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "dc-2",
+                    "deckId": "direito-civil",
+                    "front": "O vicio de consentimento causado por ameaca fisica ou psicologica que obriga alguem a contratar denomina-se:",
+                    "back": "Coacao. E vicio de vontade capaz de anular o negocio juridico.",
+                    "type": "mcq",
+                    "options": ["Erro ou ignorancia", "Dolo", "Coacao", "Lesao culposa"],
+                    "tag": "Vicios de Vontade",
+                    "difficulty": "hard",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.2,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "dc-3",
+                    "deckId": "direito-civil",
+                    "front": "O menor relativamente incapaz, de 16 a 18 anos, pratica atos da vida civil sob representacao.",
+                    "back": "Falso. Ele e assistido. A representacao vale para absolutamente incapazes.",
+                    "type": "tf",
+                    "tag": "Capacidade Civil",
+                    "difficulty": "easy",
+                    "interval": 15,
+                    "repetition": 5,
+                    "easeFactor": 2.7,
+                    "nextReviewDate": tomorrow,
+                },
+                {
+                    "id": "dc-4",
+                    "deckId": "direito-civil",
+                    "front": "Quais sao os tres requisitos de validade de qualquer negocio juridico segundo o art. 104 do Codigo Civil?",
+                    "back": "Agente capaz, objeto licito e forma prescrita ou nao proibida em lei.",
+                    "type": "qa",
+                    "tag": "Validade do Negocio",
+                    "difficulty": "easy",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.4,
+                    "nextReviewDate": today,
+                },
+            ],
+        },
+        {
+            "id": "ingles-avancado",
+            "name": "Ingles Avancado",
+            "description": "Expressoes idiomaticas, vocabulario academico e phrasal verbs corporativos.",
+            "category": "Idiomas",
+            "cardsCount": 5,
+            "masteredPercent": 12,
+            "author": "Monica Geller",
+            "cards": [
+                {
+                    "id": "eng-1",
+                    "deckId": "ingles-avancado",
+                    "front": "What does the English idiom 'to bite the bullet' mean?",
+                    "back": "To face something difficult or unpleasant with courage.",
+                    "type": "qa",
+                    "tag": "Idioms",
+                    "difficulty": "easy",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.5,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "eng-2",
+                    "deckId": "ingles-avancado",
+                    "front": "Choose the correct spelling of the word meaning a subtle distinction or variation:",
+                    "back": "Nuance. It refers to a subtle difference in meaning, opinion, color or tone.",
+                    "type": "mcq",
+                    "options": ["Newance", "Nuance", "Nuwance", "Neuance"],
+                    "tag": "Vocabulary",
+                    "difficulty": "medium",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.3,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "eng-3",
+                    "deckId": "ingles-avancado",
+                    "front": "The phrasal verb 'to touch base' means to briefly check in with someone.",
+                    "back": "Verdadeiro. E comum em contextos profissionais para retomar contato rapidamente.",
+                    "type": "tf",
+                    "tag": "Business English",
+                    "difficulty": "easy",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.5,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "eng-4",
+                    "deckId": "ingles-avancado",
+                    "front": "What is a sophisticated synonym for 'ordinary' or 'everyday'?",
+                    "back": "Mundane. It describes something common, routine or lacking excitement.",
+                    "type": "qa",
+                    "tag": "Lexico",
+                    "difficulty": "hard",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.0,
+                    "nextReviewDate": today,
+                },
+                {
+                    "id": "eng-5",
+                    "deckId": "ingles-avancado",
+                    "front": "Complete the sentence with the right idiom: 'He had a rough start, but he finally...'",
+                    "back": "got his feet wet. It means beginning to get experience with something new.",
+                    "type": "mcq",
+                    "options": ["beat around the bush", "got his feet wet", "hit the sack", "let the cat out"],
+                    "tag": "Idioms",
+                    "difficulty": "hard",
+                    "interval": 1,
+                    "repetition": 0,
+                    "easeFactor": 2.1,
+                    "nextReviewDate": today,
+                },
+            ],
+        },
+    ]
+
+
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
@@ -159,6 +403,39 @@ def _seed_admin_user(db: Session) -> None:
     db.commit()
 
 
+def _seed_default_decks_for_user(db: Session, user: UserORM) -> None:
+    existing = db.query(DeckORM).filter(DeckORM.owner_id == user.id).count()
+    if existing > 0:
+        return
+
+    for deck_payload in _build_sample_decks():
+        db.add(
+            DeckORM(
+                id=f"{user.id}-{deck_payload['id']}",
+                owner_id=user.id,
+                name=deck_payload["name"],
+                description=deck_payload["description"],
+                category=deck_payload["category"],
+                cards_count=deck_payload["cardsCount"],
+                mastered_percent=deck_payload["masteredPercent"],
+                payload={
+                    **deck_payload,
+                    "id": f"{user.id}-{deck_payload['id']}",
+                    "cards": [
+                        {
+                            **card,
+                            "id": f"{user.id}-{card['id']}",
+                            "deckId": f"{user.id}-{deck_payload['id']}",
+                        }
+                        for card in deck_payload["cards"]
+                    ],
+                },
+            )
+        )
+
+    db.commit()
+
+
 @app.on_event("startup")
 def startup_event() -> None:
     Base.metadata.create_all(bind=engine)
@@ -166,6 +443,9 @@ def startup_event() -> None:
     try:
         _ensure_schema(db)
         _seed_admin_user(db)
+        admin = db.query(UserORM).filter(UserORM.email == ADMIN_EMAIL).first()
+        if admin:
+            _seed_default_decks_for_user(db, admin)
     finally:
         db.close()
 
@@ -208,6 +488,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    _seed_default_decks_for_user(db, new_user)
     return UserOut(id=new_user.id, name=new_user.name, email=new_user.email, is_admin=new_user.is_admin)
 
 

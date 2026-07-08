@@ -48,6 +48,23 @@ function parseJsonOutput<T>(outputText: string | undefined, fallback: T): T {
   return JSON.parse(outputText.trim()) as T;
 }
 
+function getDifficultyGuidance(difficulty: "easy" | "medium" | "hard") {
+  if (difficulty === "easy") {
+    return "Foque em fundamentos, definicoes diretas, reconhecimento de termos e respostas explicitas no proprio material.";
+  }
+
+  if (difficulty === "hard") {
+    return (
+      "Torne os cards realmente dificeis. Priorize inferencia, aplicacao, comparacao entre conceitos proximos, " +
+      "excecoes, armadilhas conceituais e cenarios de prova. Evite perguntas literais, obvias ou puramente definicionais. " +
+      "Em mcq, use 4 alternativas plausiveis e proximas entre si, com apenas uma claramente correta apos raciocinio. " +
+      "Em qa, exija discriminacao fina ou justificativa curta. Em tf, prefira afirmacoes sutis e potencialmente enganosas."
+    );
+  }
+
+  return "Equilibre reconhecimento e raciocinio. Misture definicoes importantes com aplicacoes curtas e comparacoes simples.";
+}
+
 function getAiErrorMessage(error: any) {
   const isTimeout =
     error?.name === "APIConnectionTimeoutError" ||
@@ -95,15 +112,18 @@ app.post("/api/generate-cards", async (req, res) => {
     const difficulty = ["easy", "medium", "hard"].includes(level) ? level : "medium";
     const cardFormat = ["mixed", "qa", "mcq", "tf"].includes(format) ? format : "mixed";
     const source = compactText(prompt);
+    const difficultyGuidance = getDifficultyGuidance(difficulty);
 
     const response = await ai.responses.create(
       {
         model: OPENAI_MODEL,
         instructions:
-          "Crie flashcards de estudo. Seja fiel ao material, direto e sem floreios. Responda no idioma do usuario.",
+          "Crie flashcards de estudo. Seja fiel ao material, direto e sem floreios. Responda no idioma do usuario. " +
+          "Nao invente fatos fora do material, mas pode exigir raciocinio quando a dificuldade pedir.",
         input:
           `Gere ${cardCount} cards. dificuldade=${difficulty}; formato=${cardFormat}. ` +
           "qa: pergunta curta e resposta objetiva. mcq: 4 opcoes em options e resposta correta no back. tf: afirmacao e correcao breve. " +
+          `Guia de dificuldade: ${difficultyGuidance} ` +
           `Material: ${source}`,
         max_output_tokens: Math.min(2600, 260 + cardCount * 130),
         text: {
